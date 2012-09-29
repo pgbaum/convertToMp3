@@ -24,7 +24,8 @@ def getTags( fileName, verbose ):
          src.set_property( "location", fileName )
          self.player.set_state( gst.STATE_PLAYING )
          self.tags = dict()
-         self.numTags = 4
+         self.allTags =["artist", "album", "title", "track-number",
+               "audio-codec"]
 
       def onMessage(self, bus, message):
          t = message.type
@@ -33,16 +34,11 @@ def getTags( fileName, verbose ):
             for key in taglist.keys():
                if self.__verbose:
                   print key
-               if key == "artist":
-                  self.tags["artist"] = taglist[key]
-               elif key == "album":
-                  self.tags["album"] = taglist[key]
-               elif key == "title":
-                  self.tags["title"] = taglist[key]
-               elif key == "track-number":
-                  self.tags["trackNumber"] = taglist[key]
+               if key in self.allTags:
+                  self.tags[key] = taglist[key]
                # got all required tags
-               if not self.__verbose and len( self.tags ) == self.numTags:
+               if ( not self.__verbose
+                     and len( self.tags ) == len( self.allTags ) ):
                   self.__quit()
                   break
          elif t == gst.MESSAGE_EOS:
@@ -60,7 +56,7 @@ def getTags( fileName, verbose ):
    loop = glib.MainLoop()
    loop.run()
 
-   if len( getTag.tags ) != getTag.numTags:
+   if len( getTag.tags ) != len( getTag.allTags ):
       raise Exception( "Could not find all tags" )
 
    return getTag.tags
@@ -111,7 +107,8 @@ def cleanFileName( fileName ):
    return re.sub( "__+", "_", fileName )
 
 def getDest( tags ):
-   full = " ".join( [unicode( el ) for el in tags.itervalues() ] )
+   hashTags = ["artist", "album", "title", "track-number"]
+   full = " ".join( [unicode( tags[el] ) for el in hashTags] )
    hashVal = hashlib.md5( cleanName( full ) ).hexdigest( )[:3]
    dirName = cleanFileName( tags["artist"] )
    fileName = cleanFileName( "%s-%s.mp3" % (tags["title"], hashVal ) )
