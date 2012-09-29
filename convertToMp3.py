@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
-import sys
+import argparse
+import sys, os
 import glib
-import pygst
-pygst.require("0.10")
-import gst
 
 def getTags( fileName, verbose ):
    class GetTags:
       def __init__( self, fileName, verbose = False ):
+         if not os.path.exists( fileName ):
+            raise Exception( "File does not exist: \"", fileName, "\"" )
+
          self.player = gst.parse_launch(
                "filesrc name=src ! decodebin ! fakesink" )
          self.__verbose = verbose
@@ -19,6 +20,7 @@ def getTags( fileName, verbose ):
          src.set_property( "location", fileName )
          self.player.set_state( gst.STATE_PLAYING )
          self.tags = dict()
+         self.numTags = 4
 
       def onMessage(self, bus, message):
          t = message.type
@@ -36,7 +38,7 @@ def getTags( fileName, verbose ):
                elif key == "track-number":
                   self.tags["trackNumber"] = taglist[key]
                # got all required tags
-               if len( self.tags ) == 4:
+               if len( self.tags ) == self.numTags:
                   self.__quit()
                   break
          elif t == gst.MESSAGE_EOS:
@@ -54,9 +56,22 @@ def getTags( fileName, verbose ):
    loop = glib.MainLoop()
    loop.run()
 
+   if len( getTag.tags ) != getTag.numTags:
+      raise Exception( "Could not find all tags" )
+
    return getTag.tags
 
-tags = getTags( sys.argv[1], False )
+parser = argparse.ArgumentParser( description='Convert audio files to mp3' )
+parser.add_argument( "--verbose", help="Print all tags", action = "store_true" )
+parser.add_argument( "--file", help="Input file", required = True )
+parser.add_argument( "--dest", help="Destination filder", required = True )
+args = parser.parse_args()
+# if this is before parse_args, --help prints only gstreamer help
+import pygst
+pygst.require("0.10")
+import gst
+
+tags = getTags( args.file, args.verbose )
 for el in "artist", "album", "trackNumber", "title":
    print el, ":", tags[el]
 
