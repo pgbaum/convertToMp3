@@ -19,7 +19,7 @@ def getTags( fileName, verbose ):
          self.__verbose = verbose
          bus = self.player.get_bus()
          bus.add_signal_watch()
-         bus.connect( "message", self.onMessage )
+         bus.connect( "message", self.__onMessage )
          src = self.player.get_by_name( "src" )
          src.set_property( "location", fileName )
          self.player.set_state( gst.STATE_PLAYING )
@@ -27,7 +27,7 @@ def getTags( fileName, verbose ):
          self.allTags =["artist", "album", "title", "track-number",
                "audio-codec"]
 
-      def onMessage(self, bus, message):
+      def __onMessage( self, bus, message):
          t = message.type
          if t == gst.MESSAGE_TAG:
             taglist = message.parse_tag()
@@ -49,7 +49,7 @@ def getTags( fileName, verbose ):
             self.__quit()
 
       def __quit( self ):
-         self.player.set_state(gst.STATE_NULL)
+         self.player.set_state( gst.STATE_NULL )
          loop.quit()
 
    getTag = GetTags( fileName, verbose )
@@ -73,14 +73,14 @@ def convert( inFile, outFile ):
             "! filesink name=sink" )
          bus = self.player.get_bus()
          bus.add_signal_watch()
-         bus.connect( "message", self.onMessage )
+         bus.connect( "message", self.__onMessage )
          src = self.player.get_by_name( "src" )
          src.set_property( "location", inFile )
          sink = self.player.get_by_name( "sink" )
          sink.set_property( "location", outFile )
          self.player.set_state( gst.STATE_PLAYING )
 
-      def onMessage(self, bus, message):
+      def __onMessage( self, bus, message ):
          t = message.type
          if t == gst.MESSAGE_EOS:
             loop.quit()
@@ -90,7 +90,7 @@ def convert( inFile, outFile ):
             self.__quit()
 
       def __quit( self ):
-         self.player.set_state(gst.STATE_NULL)
+         self.player.set_state( gst.STATE_NULL )
          loop.quit()
 
    convert = Convert( inFile, outFile )
@@ -98,7 +98,7 @@ def convert( inFile, outFile ):
    loop.run()
 
 def cleanName( name ):
-   return unicodedata.normalize( 'NFKD', name ).encode('ascii', 'ignore')
+   return unicodedata.normalize( 'NFKD', name ).encode( 'ascii', 'ignore' )
 
 def cleanFileName( fileName ):
    fileName = cleanName( fileName ).replace( " ", "_" )
@@ -111,7 +111,7 @@ def getDest( tags ):
    full = " ".join( [unicode( tags[el] ) for el in hashTags] )
    hashVal = hashlib.md5( cleanName( full ) ).hexdigest( )[:3]
    dirName = cleanFileName( tags["artist"] )
-   fileName = cleanFileName( "%s-%s.mp3" % (tags["title"], hashVal ) )
+   fileName = cleanFileName( "%s-%s.mp3" % (tags["title"], hashVal) )
    return (dirName, fileName)
 
 def checkExistence( dirName, fileName ):
@@ -149,7 +149,7 @@ parser.add_argument( "--dest", help="Destination filder", required = True )
 args = parser.parse_args()
 # if this is before parse_args, --help prints only gstreamer help
 import pygst
-pygst.require("0.10")
+pygst.require( "0.10" )
 import gst
 
 if args.file:
