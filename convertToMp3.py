@@ -143,11 +143,9 @@ def convertFile( inFile, dest, verbose, dryRun ):
       print "done"
 
 def convertDir( inDir, dest, verbose, dryRun ):
-   for root, dirs, files in os.walk( inDir ):
+   for dirPath, dirs, files in os.walk( inDir ):
       for inFile in files:
-         convertFile( root + "/" + inFile, dest, verbose, dryRun )
-      for dd in dirs:
-         convertDir( root + "/" + dd, dest, verbose, dryRun )
+         convertFile( os.path.join( dirPath, inFile ), dest, verbose, dryRun )
 
 parser = argparse.ArgumentParser( description='Convert audio files to mp3' )
 parser.add_argument( "--verbose", help="Print all tags", action = "store_true" )
