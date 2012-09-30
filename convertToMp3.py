@@ -120,14 +120,14 @@ def checkExistence( dirName, fileName, dryRun ):
       if not dryRun:
          os.makedirs( dirName )
       return False
-   return os.path.exists( dirName + "/" + fileName )
+   return os.path.exists( os.path.join( dirName, fileName ) )
 
 def convertFile( inFile, dest, verbose, dryRun ):
    tags = getTags( inFile, verbose )
    sys.stdout.flush()
    (dirName, fileName) = getDest( tags )
-   fullDir = "%s/%s" % (dest, dirName)
-   fullName = "%s/%s" % (fullDir, fileName)
+   fullDir = os.path.join( dest, dirName )
+   fullName = os.path.join( fullDir, fileName )
    if checkExistence( fullDir, fileName, dryRun ):
       print "Exists:", inFile, "->", fullName
    elif "MPEG" in tags["audio-codec"]:
