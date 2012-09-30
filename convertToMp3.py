@@ -114,34 +114,39 @@ def getDest( tags ):
    fileName = cleanFileName( "%s-%s.mp3" % (tags["title"], hashVal) )
    return (dirName, fileName)
 
-def checkExistence( dirName, fileName ):
+def checkExistence( dirName, fileName, dryRun ):
    if not os.path.exists( dirName ):
-      os.makedirs( dirName )
+      if not dryRun:
+         os.makedirs( dirName )
       return False
    return os.path.exists( dirName + "/" + fileName )
 
-def convertFile( inFile, dest, verbose ):
+def convertFile( inFile, dest, verbose, dryRun ):
    tags = getTags( inFile, verbose )
+   sys.stdout.flush()
    (dirName, fileName) = getDest( tags )
    fullDir = "%s/%s" % (dest, dirName)
    fullName = "%s/%s" % (fullDir, fileName)
-   if checkExistence( fullDir, fileName ):
+   if checkExistence( fullDir, fileName, dryRun ):
       print "Exists:", fullName
    else:
       print "Creating:", fullName,
       sys.stdout.flush()
-      convert( inFile, fullName )
+      if not dryRun:
+         convert( inFile, fullName )
       print "done"
 
-def convertDir( inDir, dest, verbose ):
+def convertDir( inDir, dest, verbose, dryRun ):
    for root, dirs, files in os.walk( inDir ):
       for inFile in files:
-         convertFile( root + "/" + inFile, dest, verbose )
+         convertFile( root + "/" + inFile, dest, verbose, dryRun )
       for dd in dirs:
-         convertDir( root + "/" + dd, dest, verbose )
+         convertDir( root + "/" + dd, dest, verbose, dryRun )
 
 parser = argparse.ArgumentParser( description='Convert audio files to mp3' )
 parser.add_argument( "--verbose", help="Print all tags", action = "store_true" )
+parser.add_argument( "--dry-run", help="Don't write anything",
+      action = "store_true" )
 group = parser.add_mutually_exclusive_group( required = True )
 group.add_argument( "--dir", help="Input directory" )
 group.add_argument( "--file", help="Input file" )
@@ -153,7 +158,7 @@ pygst.require( "0.10" )
 import gst
 
 if args.file:
-   convertFile( args.file, args.dest, args.verbose )
+   convertFile( args.file, args.dest, args.verbose, args.dry_run )
 else:
-   convertDir( args.dir, args.dest, args.verbose )
+   convertDir( args.dir, args.dest, args.verbose, args.dry_run )
 
