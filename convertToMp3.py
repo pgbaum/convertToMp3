@@ -129,14 +129,14 @@ def convertFile( inFile, dest, verbose, dryRun ):
    fullDir = "%s/%s" % (dest, dirName)
    fullName = "%s/%s" % (fullDir, fileName)
    if checkExistence( fullDir, fileName, dryRun ):
-      print "Exists:", fullName
+      print "Exists:", inFile, "->", fullName
    elif "MPEG" in tags["audio-codec"]:
-      print "Copying:", fullName,
+      print "Copying:", inFile, "->", fullName,
       if not dryRun:
          shutil.copyfile( inFile, fullName )
       print "done"
    else:
-      print "Creating:", fullName,
+      print "Creating:", inFile, "->", fullName,
       sys.stdout.flush()
       if not dryRun:
          convert( inFile, fullName )
