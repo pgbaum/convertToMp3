@@ -2,6 +2,7 @@
 
 import argparse
 import sys, os
+import shutil
 import glib
 import unicodedata
 import hashlib
@@ -129,6 +130,11 @@ def convertFile( inFile, dest, verbose, dryRun ):
    fullName = "%s/%s" % (fullDir, fileName)
    if checkExistence( fullDir, fileName, dryRun ):
       print "Exists:", fullName
+   elif "MPEG" in tags["audio-codec"]:
+      print "Copying:", fullName,
+      if not dryRun:
+         shutil.copyfile( inFile, fullName )
+      print "done"
    else:
       print "Creating:", fullName,
       sys.stdout.flush()
