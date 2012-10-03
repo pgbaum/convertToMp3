@@ -169,8 +169,8 @@ group = parser.add_mutually_exclusive_group( required = True )
 group.add_argument( "--dir", help="Input directory" )
 group.add_argument( "--file", help="Input file" )
 parser.add_argument( "--dest", help="Destination filder", required = True )
-parser.add_argument( "--quality", help="Quality of mp3", default = 2,
-      type = int, required = True )
+parser.add_argument( "--quality", help="Quality of mp3", default = 3,
+      type = int, required = False )
 args = parser.parse_args()
 # if this is before parse_args, --help prints only gstreamer help
 import pygst
