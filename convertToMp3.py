@@ -70,39 +70,46 @@ def getTags( fileName, verbose ):
 
 def convert( inFile, outFile, quality ):
    class Convert:
-      def __init__( self, inFile, outFile, quality ):
+      def __init__( self ):
+         self.__player = gst.parse_launch(
+            "filesrc name=src ! flacdec ! audioconvert ! "
+            "lamemp3enc name=enc ! id3v2mux "
+            "! filesink name=sink" )
+         bus = self.__player.get_bus()
+         bus.add_signal_watch()
+         bus.connect( "message", self.__onMessage )
+
+      def start( self, inFile, outFile, quality ):
          if not os.path.exists( inFile ):
             raise Exception( "File does not exist: \"", fileName, "\"" )
 
-         self.player = gst.parse_launch(
-            "filesrc name=src ! flacdec ! audioconvert ! "
-            "lamemp3enc target=quality quality=%d ! id3v2mux "
-            "! filesink name=sink" % quality )
-         bus = self.player.get_bus()
-         bus.add_signal_watch()
-         bus.connect( "message", self.__onMessage )
-         src = self.player.get_by_name( "src" )
+         src = self.__player.get_by_name( "src" )
          src.set_property( "location", inFile )
-         sink = self.player.get_by_name( "sink" )
+         sink = self.__player.get_by_name( "sink" )
          sink.set_property( "location", outFile )
-         self.player.set_state( gst.STATE_PLAYING )
+         enc = self.__player.get_by_name( "enc" )
+         enc.set_property( "quality", quality )
+         self.__player.set_state( gst.STATE_PLAYING )
+         self.__loop = glib.MainLoop()
+         self.__loop.run()
 
       def __onMessage( self, bus, message ):
          t = message.type
          if t == gst.MESSAGE_EOS:
-            loop.quit()
+            self.__quit()
          elif t == gst.MESSAGE_ERROR:
             err, debug = message.parse_error()
             print "Error: %s" % err, debug
             self.__quit()
 
       def __quit( self ):
-         self.player.set_state( gst.STATE_NULL )
-         loop.quit()
+         self.__player.set_state( gst.STATE_NULL )
+         self.__loop.quit()
+         self.__loop = None
 
-   conv = Convert( inFile, outFile, quality )
-   loop = glib.MainLoop()
-   loop.run()
+   if not hasattr( convert, "_obj" ):
+      convert._obj = Convert( )
+   convert._obj.start( inFile, outFile, quality )
 
 def cleanName( name ):
    return unicodedata.normalize( 'NFKD', name ).encode( 'ascii', 'ignore' )
