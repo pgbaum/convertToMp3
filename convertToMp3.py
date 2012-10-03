@@ -11,35 +11,38 @@ import re
 
 def getTags( fileName, verbose ):
    class GetTags:
-      def __init__( self, fileName, verbose = False ):
-         if not os.path.exists( fileName ):
-            raise Exception( "File does not exist: \"", fileName, "\"" )
-
-         self.player = gst.parse_launch(
+      def __init__( self ):
+         self.__player = gst.parse_launch(
                "filesrc name=src ! decodebin ! fakesink" )
-         self.__verbose = verbose
-         bus = self.player.get_bus()
+         bus = self.__player.get_bus()
          bus.add_signal_watch()
          bus.connect( "message", self.__onMessage )
-         src = self.player.get_by_name( "src" )
-         src.set_property( "location", fileName )
-         self.player.set_state( gst.STATE_PLAYING )
-         self.tags = dict()
-         self.allTags =["artist", "album", "title", "track-number",
-               "audio-codec"]
 
-      def __onMessage( self, bus, message):
+      def start( self, fileName, expectedTags, verbose ):
+         if not os.path.exists( fileName ):
+            raise Exception( "File does not exist: \"", fileName, "\"" )
+         src = self.__player.get_by_name( "src" )
+         src.set_property( "location", fileName )
+
+         self.__verbose = verbose
+         self.__expected = expectedTags
+         self.tags = dict()
+         self.__player.set_state( gst.STATE_PLAYING )
+         self.__loop = glib.MainLoop()
+         self.__loop.run()
+
+      def __onMessage( self, bus, message ):
          t = message.type
          if t == gst.MESSAGE_TAG:
             taglist = message.parse_tag()
             for key in taglist.keys():
                if self.__verbose:
                   print key
-               if key in self.allTags:
+               if key in self.__expected:
                   self.tags[key] = taglist[key]
                # got all required tags
                if ( not self.__verbose
-                     and len( self.tags ) == len( self.allTags ) ):
+                     and len( self.tags ) == len( self.__expected ) ):
                   self.__quit()
                   break
          elif t == gst.MESSAGE_EOS:
@@ -50,17 +53,20 @@ def getTags( fileName, verbose ):
             self.__quit()
 
       def __quit( self ):
-         self.player.set_state( gst.STATE_NULL )
-         loop.quit()
+         self.__player.set_state( gst.STATE_NULL )
+         self.__loop.quit()
+         self.__loop = None
 
-   getTag = GetTags( fileName, verbose )
-   loop = glib.MainLoop()
-   loop.run()
+   if not hasattr( getTags, "_obj" ):
+      getTags._obj = GetTags( )
+   expectedTags = ["artist", "album", "title", "track-number", "audio-codec"]
 
-   if len( getTag.tags ) != len( getTag.allTags ):
+   getTags._obj.start( fileName, expectedTags, verbose )
+
+   if len( getTags._obj.tags ) != len( expectedTags ):
       raise Exception( "Could not find all tags" )
 
-   return getTag.tags
+   return getTags._obj.tags
 
 def convert( inFile, outFile, quality ):
    class Convert:
