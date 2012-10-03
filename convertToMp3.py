@@ -62,16 +62,16 @@ def getTags( fileName, verbose ):
 
    return getTag.tags
 
-def convert( inFile, outFile ):
+def convert( inFile, outFile, quality ):
    class Convert:
-      def __init__( self, inFile, outFile ):
+      def __init__( self, inFile, outFile, quality ):
          if not os.path.exists( inFile ):
             raise Exception( "File does not exist: \"", fileName, "\"" )
 
          self.player = gst.parse_launch(
             "filesrc name=src ! flacdec ! audioconvert ! "
-            "lamemp3enc target=quality quality=2 ! id3v2mux "
-            "! filesink name=sink" )
+            "lamemp3enc target=quality quality=%d ! id3v2mux "
+            "! filesink name=sink" % quality )
          bus = self.player.get_bus()
          bus.add_signal_watch()
          bus.connect( "message", self.__onMessage )
@@ -94,7 +94,7 @@ def convert( inFile, outFile ):
          self.player.set_state( gst.STATE_NULL )
          loop.quit()
 
-   convert = Convert( inFile, outFile )
+   conv = Convert( inFile, outFile, quality )
    loop = glib.MainLoop()
    loop.run()
 
@@ -122,7 +122,7 @@ def checkExistence( dirName, fileName, dryRun ):
       return False
    return os.path.exists( os.path.join( dirName, fileName ) )
 
-def convertFile( inFile, dest, verbose, dryRun ):
+def convertFile( inFile, dest, verbose, quality, dryRun ):
    tags = getTags( inFile, verbose )
    sys.stdout.flush()
    (dirName, fileName) = getDest( tags )
@@ -139,13 +139,14 @@ def convertFile( inFile, dest, verbose, dryRun ):
       print "Creating:", inFile, "->", fullName,
       sys.stdout.flush()
       if not dryRun:
-         convert( inFile, fullName )
+         convert( inFile, fullName, quality )
       print "done"
 
-def convertDir( inDir, dest, verbose, dryRun ):
+def convertDir( inDir, dest, verbose, quality, dryRun ):
    for dirPath, dirs, files in os.walk( inDir ):
       for inFile in files:
-         convertFile( os.path.join( dirPath, inFile ), dest, verbose, dryRun )
+         convertFile( os.path.join( dirPath, inFile ), dest, verbose,
+               quality, dryRun )
 
 parser = argparse.ArgumentParser( description='Convert audio files to mp3' )
 parser.add_argument( "--verbose", help="Print all tags", action = "store_true" )
@@ -155,6 +156,8 @@ group = parser.add_mutually_exclusive_group( required = True )
 group.add_argument( "--dir", help="Input directory" )
 group.add_argument( "--file", help="Input file" )
 parser.add_argument( "--dest", help="Destination filder", required = True )
+parser.add_argument( "--quality", help="Quality of mp3", default = 2,
+      type = int, required = True )
 args = parser.parse_args()
 # if this is before parse_args, --help prints only gstreamer help
 import pygst
@@ -162,7 +165,7 @@ pygst.require( "0.10" )
 import gst
 
 if args.file:
-   convertFile( args.file, args.dest, args.verbose, args.dry_run )
+   convertFile( args.file, args.dest, args.verbose, args.quality, args.dry_run )
 else:
-   convertDir( args.dir, args.dest, args.verbose, args.dry_run )
+   convertDir( args.dir, args.dest, args.verbose, args.quality, args.dry_run )
 
