@@ -1,0 +1,20 @@
+Command line tool convert audio files to mp3 based on gstreamer.
+
+There are many tools available, but I was not able to find one
+with the following features:
+   - batch conversion of directories
+   - handles all input files (using gstreamer plug-ins)
+   - mp3 input files are just copied, not re-encoded
+   - if the output file exists, it is skipped
+
+It has a uniq naming convention for the output file
+- the ouput file is named after the title of the song with all
+  unicode characters decomposed and normalized (for example a
+  u-umlaut "ü" becomes a simple "u"), and all potential 
+  non-compatilbe characters stripped.
+- to allow several versions of the same song, a hash of the album,
+  track and title is added to the file name
+- the file is placed in a directory named after the artist with
+  all sanitation mentioned for the song title
+
+
