@@ -1,4 +1,4 @@
-Command line tool convert audio files to mp3 based on gstreamer.
+Command line tool to convert audio files to mp3 based on gstreamer.
 
 There are many tools available, but I was not able to find one
 with the following features:
