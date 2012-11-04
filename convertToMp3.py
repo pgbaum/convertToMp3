@@ -49,7 +49,8 @@ def getTags( fileName, verbose ):
             loop.quit()
          elif t == gst.MESSAGE_ERROR:
             err, debug = message.parse_error()
-            print "Error: %s" % err, debug
+            self.tags.clear()
+            self.tags["Error"] = err
             self.__quit()
 
       def __quit( self ):
@@ -136,7 +137,12 @@ def checkExistence( dirName, fileName, dryRun ):
    return os.path.exists( os.path.join( dirName, fileName ) )
 
 def convertFile( inFile, dest, verbose, quality, dryRun ):
-   tags = getTags( inFile, verbose )
+   try:
+      tags = getTags( inFile, verbose )
+   except Exception:
+      print "Skipping (no tags):", inFile
+      return
+
    sys.stdout.flush()
    (dirName, fileName) = getDest( tags )
    fullDir = os.path.join( dest, dirName )
