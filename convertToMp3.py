@@ -167,6 +167,43 @@ def convertDir( inDir, dest, verbose, quality, dryRun ):
          convertFile( os.path.join( dirPath, inFile ), dest, verbose,
                quality, dryRun )
 
+# this is necessary, if the output is a pipe, since sys.stdout.encoding
+# is then None. But for filenames encode does not work, why?
+def write( line ):
+    print( line.encode('utf-8') )
+
+def addFileToDict( inFile, verbose, fileInfos ):
+   print "# Checking: %s" % (inFile),
+   try:
+      tags = getTags( inFile, verbose )
+   except Exception:
+      write( "Skipping (no tags)" )
+      return
+
+   write( tags["title"] )
+   title = cleanName( tags["title"] ).lower()
+   title = ''.join( [c for c in title if c in string.ascii_letters] )
+   if title in fileInfos:
+      fileInfos[title].append( inFile )
+   else:
+      fileInfos[title] = [inFile]
+
+def checkForDupes( inDir, dest, dupesDir, verbose ):
+   fileInfos = dict()
+   for dirPath, dirs, files in os.walk( inDir ):
+      for inFile in files:
+         addFileToDict( os.path.join( dirPath, inFile ), verbose, fileInfos )
+
+   for title in fileInfos.itervalues():
+      if len( title ) > 1:
+         print "# Possible dupes:"
+         for el in title:
+            tags = getTags( el, verbose )
+            (dirName, fileName) = getDest( tags )
+            fullName = os.path.join( dest, dirName, fileName )
+            write( "   # %s: %s" % (tags["artist"], tags["title"] ) )
+            print "   # mv \"%s\" %s; rm -f %s" % (el, dupesDir, fullName)
+
 parser = argparse.ArgumentParser( description='Convert audio files to mp3' )
 parser.add_argument( "--verbose", help="Print all tags", action = "store_true" )
 parser.add_argument( "--dry-run", help="Don't write anything",
@@ -177,13 +214,24 @@ group.add_argument( "--file", help="Input file" )
 parser.add_argument( "--dest", help="Destination filder", required = True )
 parser.add_argument( "--quality", help="Quality of mp3", default = 3,
       type = int, required = False )
+parser.add_argument( "--find-dupes",
+      help="Check for dupes instead of converting", action = "store_true" )
+parser.add_argument( "--dupes-dir", help="Directory for dupes" )
+
 args = parser.parse_args()
 # if this is before parse_args, --help prints only gstreamer help
 import pygst
 pygst.require( "0.10" )
 import gst
 
-if args.file:
+if args.find_dupes:
+   if args.dir == None:
+      print "%s: Error: argument --dir is required" % sys.argv[0]
+      sys.exit( 1 )
+   if args.dupes_dir == None:
+      print "%s: Error: argument --dir is required" % sys.argv[0]
+   checkForDupes( args.dir, args.dest, args.dupes_dir, args.verbose )
+elif args.file:
    convertFile( args.file, args.dest, args.verbose, args.quality, args.dry_run )
 else:
    convertDir( args.dir, args.dest, args.verbose, args.quality, args.dry_run )
