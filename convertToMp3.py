@@ -182,6 +182,7 @@ def addFileToDict( inFile, verbose, fileInfos ):
 
    write( tags["title"] )
    title = cleanName( tags["title"] ).lower()
+   title += cleanName( tags["artist"] ).lower()
    title = ''.join( [c for c in title if c in string.ascii_letters] )
    if title in fileInfos:
       fileInfos[title].append( inFile )
