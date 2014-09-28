@@ -116,7 +116,7 @@ def cleanName( name ):
    return unicodedata.normalize( 'NFKD', name ).encode( 'ascii', 'ignore' )
 
 def cleanFileName( fileName ):
-   fileName = cleanName( fileName ).replace( " ", "_" )
+   fileName = cleanName( fileName ).replace( " ", "_" ).replace( ".", "_" )
    valid = "-_." + string.ascii_letters + string.digits
    fileName = ''.join( [c for c in fileName if c in valid] )
    return re.sub( "__+", "_", fileName )
@@ -126,7 +126,7 @@ def getDest( tags ):
    full = " ".join( [unicode( tags[el] ) for el in hashTags] )
    hashVal = hashlib.md5( cleanName( full ) ).hexdigest( )[:3]
    dirName = cleanFileName( tags["artist"] )
-   fileName = cleanFileName( "%s-%s.mp3" % (tags["title"], hashVal) )
+   fileName = cleanFileName( "%s-%s" % (tags["title"], hashVal) ) + ".mp3"
    return (dirName, fileName)
 
 def checkExistence( dirName, fileName, dryRun ):
