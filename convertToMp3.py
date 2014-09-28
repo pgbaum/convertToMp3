@@ -203,7 +203,10 @@ def checkForDupes( inDir, dest, dupesDir, verbose ):
             (dirName, fileName) = getDest( tags )
             fullName = os.path.join( dest, dirName, fileName )
             write( "   # %s: %s" % (tags["artist"], tags["title"] ) )
-            print "   # mv \"%s\" %s; rm -f %s" % (el, dupesDir, fullName)
+            if dupesDir == None:
+               print "   # rm -f \"%s\" %s" % (el, fullName)
+            else:
+               print "   # mv \"%s\" %s; rm -f %s" % (el, dupesDir, fullName)
 
 parser = argparse.ArgumentParser( description='Convert audio files to mp3' )
 parser.add_argument( "--verbose", help="Print all tags", action = "store_true" )
@@ -212,7 +215,7 @@ parser.add_argument( "--dry-run", help="Don't write anything",
 group = parser.add_mutually_exclusive_group( required = True )
 group.add_argument( "--dir", help="Input directory" )
 group.add_argument( "--file", help="Input file" )
-parser.add_argument( "--dest", help="Destination filder", required = True )
+parser.add_argument( "--dest", help="Destination folder", required = True )
 parser.add_argument( "--quality", help="Quality of mp3", default = 3,
       type = int, required = False )
 parser.add_argument( "--find-dupes",
@@ -229,8 +232,6 @@ if args.find_dupes:
    if args.dir == None:
       print "%s: Error: argument --dir is required" % sys.argv[0]
       sys.exit( 1 )
-   if args.dupes_dir == None:
-      print "%s: Error: argument --dir is required" % sys.argv[0]
    checkForDupes( args.dir, args.dest, args.dupes_dir, args.verbose )
 elif args.file:
    convertFile( args.file, args.dest, args.verbose, args.quality, args.dry_run )
