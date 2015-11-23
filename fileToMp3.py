@@ -13,7 +13,7 @@ def convert( src ):
    if os.path.exists( dest ):
      print "file exists"
      return
-   cmd = 'gst-launch filesrc location="%s" ! decodebin ! audioconvert ! ' \
+   cmd = 'gst-launch-1.0 filesrc location="%s" ! decodebin ! audioconvert ! ' \
          'lamemp3enc name=enc quality=3 ! id3v2mux ' \
          '! filesink location="%s"' % (src, dest )
    subprocess.check_output( cmd, shell = True )

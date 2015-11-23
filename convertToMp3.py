@@ -8,11 +8,14 @@ import unicodedata
 import hashlib
 import string
 import re
+import gi
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst
 
 def getTags( fileName, verbose ):
    class GetTags:
       def __init__( self ):
-         self.__player = gst.parse_launch(
+         self.__player = Gst.parse_launch(
                "filesrc name=src ! decodebin ! fakesink" )
          bus = self.__player.get_bus()
          bus.add_signal_watch()
@@ -27,34 +30,40 @@ def getTags( fileName, verbose ):
          self.__verbose = verbose
          self.__expected = expectedTags
          self.tags = dict()
-         self.__player.set_state( gst.STATE_PLAYING )
+         self.__player.set_state( Gst.State.PLAYING )
          self.__loop = glib.MainLoop()
          self.__loop.run()
 
       def __onMessage( self, bus, message ):
          t = message.type
-         if t == gst.MESSAGE_TAG:
+         if t == Gst.MessageType.TAG:
             taglist = message.parse_tag()
-            for key in taglist.keys():
+            # print taglist.to_string()
+            for key in self.__expected:
+               typeName = Gst.tag_get_type( key ).name
+               if typeName == "gchararray":
+                  isValid, value = taglist.get_string( key )
+               elif typeName == "guint":
+                  isValid, value = taglist.get_uint( key )
                if self.__verbose:
-                  print key
-               if key in self.__expected:
-                  self.tags[key] = taglist[key]
+                  print key, value
+               if isValid:
+                  self.tags[key] = unicode( value )
                # got all required tags
                if ( not self.__verbose
                      and len( self.tags ) == len( self.__expected ) ):
                   self.__quit()
                   break
-         elif t == gst.MESSAGE_EOS:
-            loop.quit()
-         elif t == gst.MESSAGE_ERROR:
+         elif t == Gst.MessageType.EOS:
+            self.__loop.quit()
+         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
             self.tags.clear()
             self.tags["Error"] = err
             self.__quit()
 
       def __quit( self ):
-         self.__player.set_state( gst.STATE_NULL )
+         self.__player.set_state( Gst.State.NULL )
          self.__loop.quit()
          self.__loop = None
 
@@ -72,8 +81,8 @@ def getTags( fileName, verbose ):
 def convert( inFile, outFile, quality ):
    class Convert:
       def __init__( self ):
-         self.__player = gst.parse_launch(
-            "filesrc name=src ! flacdec ! audioconvert ! "
+         self.__player = Gst.parse_launch(
+            "filesrc name=src ! flacparse ! flacdec ! audioconvert ! "
             "lamemp3enc name=enc ! id3v2mux "
             "! filesink name=sink" )
          bus = self.__player.get_bus()
@@ -90,21 +99,21 @@ def convert( inFile, outFile, quality ):
          sink.set_property( "location", outFile )
          enc = self.__player.get_by_name( "enc" )
          enc.set_property( "quality", quality )
-         self.__player.set_state( gst.STATE_PLAYING )
+         self.__player.set_state( Gst.State.PLAYING )
          self.__loop = glib.MainLoop()
          self.__loop.run()
 
       def __onMessage( self, bus, message ):
          t = message.type
-         if t == gst.MESSAGE_EOS:
+         if t == Gst.MessageType.EOS:
             self.__quit()
-         elif t == gst.MESSAGE_ERROR:
+         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
             print "Error: %s" % err, debug
             self.__quit()
 
       def __quit( self ):
-         self.__player.set_state( gst.STATE_NULL )
+         self.__player.set_state( Gst.State.NULL )
          self.__loop.quit()
          self.__loop = None
 
@@ -223,10 +232,8 @@ parser.add_argument( "--find-dupes",
 parser.add_argument( "--dupes-dir", help="Directory for dupes" )
 
 args = parser.parse_args()
-# if this is before parse_args, --help prints only gstreamer help
-import pygst
-pygst.require( "0.10" )
-import gst
+
+Gst.init( None )
 
 if args.find_dupes:
    if args.dir == None:
