@@ -43,8 +43,10 @@ def getTags( fileName, verbose ):
                typeName = Gst.tag_get_type( key ).name
                if typeName == "gchararray":
                   isValid, value = taglist.get_string( key )
-               elif typeName == "guint":
-                  isValid, value = taglist.get_uint( key )
+                  if isValid:
+                     value = value.decode( 'utf-8', errors = 'ignore' )
+                  elif typeName == "guint":
+                     isValid, value = taglist.get_uint( key )
                if self.__verbose:
                   print key, value
                if isValid:
