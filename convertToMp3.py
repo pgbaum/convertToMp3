@@ -69,47 +69,37 @@ def getTags( fileName, verbose ):
    return tags
 
 def convert( inFile, outFile, quality ):
-   class Convert:
-      def __init__( self ):
-         self.__player = Gst.parse_launch(
-            "filesrc name=src ! flacparse ! flacdec ! audioconvert ! "
-            "lamemp3enc name=enc ! id3v2mux "
-            "! filesink name=sink" )
-         bus = self.__player.get_bus()
-         bus.add_signal_watch()
-         bus.connect( "message", self.__onMessage )
 
-      def start( self, inFile, outFile, quality ):
-         if not os.path.exists( inFile ):
-            raise Exception( "File does not exist: \"", fileName, "\"" )
+   if not os.path.exists( inFile ):
+      raise Exception( "File does not exist: \"", fileName, "\"" )
 
-         src = self.__player.get_by_name( "src" )
-         src.set_property( "location", inFile )
-         sink = self.__player.get_by_name( "sink" )
-         sink.set_property( "location", outFile )
-         enc = self.__player.get_by_name( "enc" )
-         enc.set_property( "quality", quality )
-         self.__player.set_state( Gst.State.PLAYING )
-         self.__loop = glib.MainLoop()
-         self.__loop.run()
+   player = Gst.parse_launch(
+      "filesrc name=src ! flacparse ! flacdec ! audioconvert ! "
+      "lamemp3enc name=enc ! id3v2mux "
+      "! filesink name=sink" )
+   bus = player.get_bus()
 
-      def __onMessage( self, bus, message ):
-         t = message.type
-         if t == Gst.MessageType.EOS:
-            self.__quit()
-         elif t == Gst.MessageType.ERROR:
-            err, debug = message.parse_error()
-            print "Error: %s" % err, debug
-            self.__quit()
+   src = player.get_by_name( "src" )
+   src.set_property( "location", inFile )
+   sink = player.get_by_name( "sink" )
+   sink.set_property( "location", outFile )
+   enc = player.get_by_name( "enc" )
+   enc.set_property( "quality", quality )
+   player.set_state( Gst.State.PLAYING )
 
-      def __quit( self ):
-         self.__player.set_state( Gst.State.NULL )
-         self.__loop.quit()
-         self.__loop = None
+   while True:
+      message = bus.pop()
+      if not message:
+         continue
+      t = message.type
+      if t == Gst.MessageType.EOS:
+         break
+      elif t == Gst.MessageType.ERROR:
+         err, debug = message.parse_error()
+         print "Error: %s" % err, debug
+         break
 
-   if not hasattr( convert, "_obj" ):
-      convert._obj = Convert( )
-   convert._obj.start( inFile, outFile, quality )
+   player.set_state( Gst.State.NULL )
 
 def cleanName( name ):
    return unicodedata.normalize( 'NFKD', name ).encode( 'ascii', 'ignore' )
