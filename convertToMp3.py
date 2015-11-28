@@ -13,72 +13,60 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
 def getTags( fileName, verbose ):
-   class GetTags:
-      def __init__( self ):
-         self.__player = Gst.parse_launch(
-               "filesrc name=src ! decodebin ! fakesink" )
-         bus = self.__player.get_bus()
-         bus.add_signal_watch()
-         bus.connect( "message", self.__onMessage )
 
-      def start( self, fileName, expectedTags, verbose ):
-         if not os.path.exists( fileName ):
-            raise Exception( "File does not exist: \"", fileName, "\"" )
-         src = self.__player.get_by_name( "src" )
-         src.set_property( "location", fileName )
-
-         self.__verbose = verbose
-         self.__expected = expectedTags
-         self.tags = dict()
-         self.__player.set_state( Gst.State.PLAYING )
-         self.__loop = glib.MainLoop()
-         self.__loop.run()
-
-      def __onMessage( self, bus, message ):
-         t = message.type
-         if t == Gst.MessageType.TAG:
-            taglist = message.parse_tag()
-            # print taglist.to_string()
-            for key in self.__expected:
-               typeName = Gst.tag_get_type( key ).name
-               if typeName == "gchararray":
-                  isValid, value = taglist.get_string( key )
-                  if isValid:
-                     value = value.decode( 'utf-8', errors = 'ignore' )
-                  elif typeName == "guint":
-                     isValid, value = taglist.get_uint( key )
-               if self.__verbose:
-                  print key, value
-               if isValid:
-                  self.tags[key] = unicode( value )
-               # got all required tags
-               if ( not self.__verbose
-                     and len( self.tags ) == len( self.__expected ) ):
-                  self.__quit()
-                  break
-         elif t == Gst.MessageType.EOS:
-            self.__loop.quit()
-         elif t == Gst.MessageType.ERROR:
-            err, debug = message.parse_error()
-            self.tags.clear()
-            self.tags["Error"] = err
-            self.__quit()
-
-      def __quit( self ):
-         self.__player.set_state( Gst.State.NULL )
-         self.__loop.quit()
-         self.__loop = None
-
-   if not hasattr( getTags, "_obj" ):
-      getTags._obj = GetTags( )
    expectedTags = ["artist", "album", "title", "track-number", "audio-codec"]
 
-   getTags._obj.start( fileName, expectedTags, verbose )
+   if not os.path.exists( fileName ):
+      raise Exception( "File does not exist: \"", fileName, "\"" )
 
-   if len( getTags._obj.tags ) != len( expectedTags ):
+   player = Gst.parse_launch(
+         "filesrc name=src ! decodebin ! fakesink" )
+   bus = player.get_bus()
+
+   src = player.get_by_name( "src" )
+   src.set_property( "location", fileName )
+
+   tags = dict()
+   player.set_state( Gst.State.PLAYING )
+
+   while True:
+      message = bus.pop()
+      if not message:
+         continue
+      t = message.type
+      if t == Gst.MessageType.TAG:
+         taglist = message.parse_tag()
+         for key in expectedTags:
+            typeName = Gst.tag_get_type( key ).name
+            if typeName == "gchararray":
+               isValid, value = taglist.get_string( key )
+               if isValid:
+                  value = value.decode( 'utf-8', errors = 'ignore' )
+               elif typeName == "guint":
+                  isValid, value = taglist.get_uint( key )
+            if verbose:
+               print key, value
+            if isValid:
+               tags[key] = unicode( value )
+            # got all required tags
+            if ( not verbose
+                  and len( tags ) == len( expectedTags ) ):
+               break;
+      elif t == Gst.MessageType.EOS:
+         break;
+      elif t == Gst.MessageType.ERROR:
+         err, debug = message.parse_error()
+         tags.clear()
+         tags["Error"] = err
+         print "in MessageType Error: ", err
+         break
+
+   player.set_state( Gst.State.NULL )
+
+   if len( tags ) != len( expectedTags ):
       raise Exception( "Could not find all tags" )
 
-   return getTags._obj.tags
+   return tags
 
 def convert( inFile, outFile, quality ):
    class Convert:
