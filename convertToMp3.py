@@ -3,7 +3,6 @@
 import argparse
 import sys, os
 import shutil
-import glib
 import unicodedata
 import hashlib
 import string
@@ -13,7 +12,6 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
 def getTags( fileName, verbose ):
-
    expectedTags = ["artist", "album", "title", "track-number", "audio-codec"]
 
    if not os.path.exists( fileName ):
@@ -40,14 +38,12 @@ def getTags( fileName, verbose ):
             typeName = Gst.tag_get_type( key ).name
             if typeName == "gchararray":
                isValid, value = taglist.get_string( key )
-               if isValid:
-                  value = value.decode( 'utf-8', errors = 'ignore' )
-               elif typeName == "guint":
-                  isValid, value = taglist.get_uint( key )
+            elif typeName == "guint":
+                isValid, value = taglist.get_uint( key )
             if verbose:
-               print key, value
+               print( key, value )
             if isValid:
-               tags[key] = unicode( value )
+               tags[key] = str( value )
             # got all required tags
             if ( not verbose
                   and len( tags ) == len( expectedTags ) ):
@@ -58,7 +54,7 @@ def getTags( fileName, verbose ):
          err, debug = message.parse_error()
          tags.clear()
          tags["Error"] = err
-         print "in MessageType Error: ", err
+         print( f"in MessageType Error: {err}" )
          break
 
    player.set_state( Gst.State.NULL )
@@ -96,13 +92,13 @@ def convert( inFile, outFile, quality ):
          break
       elif t == Gst.MessageType.ERROR:
          err, debug = message.parse_error()
-         print "Error: %s" % err, debug
+         print( f"Error: {err}, {debug}" )
          break
 
    player.set_state( Gst.State.NULL )
 
 def cleanName( name ):
-   return unicodedata.normalize( 'NFKD', name ).encode( 'ascii', 'ignore' )
+   return unicodedata.normalize( 'NFKD', name ).encode( 'ascii', 'ignore' ).decode( "utf-8" )
 
 def cleanFileName( fileName ):
    fileName = cleanName( fileName ).replace( " ", "_" ).replace( ".", "_" )
@@ -112,8 +108,8 @@ def cleanFileName( fileName ):
 
 def getDest( tags ):
    hashTags = ["artist", "album", "title", "track-number"]
-   full = " ".join( [unicode( tags[el] ) for el in hashTags] )
-   hashVal = hashlib.md5( cleanName( full ) ).hexdigest( )[:3]
+   full = " ".join( [ tags[el] for el in hashTags] )
+   hashVal = hashlib.md5( cleanName( full ).encode() ).hexdigest( )[:3]
    dirName = cleanFileName( tags["artist"] )
    fileName = cleanFileName( "%s-%s" % (tags["title"], hashVal) ) + ".mp3"
    return (dirName, fileName)
@@ -129,7 +125,7 @@ def convertFile( inFile, dest, verbose, quality, dryRun ):
    try:
       tags = getTags( inFile, verbose )
    except Exception:
-      print "Skipping (no tags):", inFile
+      print( f"Skipping (no tags): {inFile}" )
       return
 
    sys.stdout.flush()
@@ -137,18 +133,18 @@ def convertFile( inFile, dest, verbose, quality, dryRun ):
    fullDir = os.path.join( dest, dirName )
    fullName = os.path.join( fullDir, fileName )
    if checkExistence( fullDir, fileName, dryRun ):
-      print "Exists:", inFile, "->", fullName
+      print( f"Exists: {inFile} -> {fullName}" )
    elif "MPEG" in tags["audio-codec"]:
-      print "Copying:", inFile, "->", fullName,
+      print( f"Copying: {inFile} -> {fullName}", end = "" )
       if not dryRun:
          shutil.copyfile( inFile, fullName )
-      print "done"
+      print( "done" )
    else:
-      print "Creating:", inFile, "->", fullName,
+      print( f"Creating: {inFile} -> {fullName}", end = "" )
       sys.stdout.flush()
       if not dryRun:
          convert( inFile, fullName, quality )
-      print "done"
+      print( "done" )
 
 def convertDir( inDir, dest, verbose, quality, dryRun ):
    for dirPath, dirs, files in os.walk( inDir ):
@@ -162,7 +158,7 @@ def write( line ):
     print( line.encode('utf-8') )
 
 def addFileToDict( inFile, verbose, fileInfos ):
-   print "# Checking: %s" % (inFile),
+   print( f"# Checking: {inFile}", end = "" )
    try:
       tags = getTags( inFile, verbose )
    except Exception:
@@ -186,16 +182,16 @@ def checkForDupes( inDir, dest, dupesDir, verbose ):
 
    for title in fileInfos.itervalues():
       if len( title ) > 1:
-         print "# Possible dupes:"
+         print( "# Possible dupes:" )
          for el in title:
             tags = getTags( el, verbose )
             (dirName, fileName) = getDest( tags )
             fullName = os.path.join( dest, dirName, fileName )
             write( "   # %s: %s" % (tags["artist"], tags["title"] ) )
             if dupesDir == None:
-               print "   # rm -f \"%s\" %s" % (el, fullName)
+               print( "   # rm -f \"%s\" %s" % (el, fullName) )
             else:
-               print "   # mv \"%s\" %s; rm -f %s" % (el, dupesDir, fullName)
+               print( "   # mv \"%s\" %s; rm -f %s" % (el, dupesDir, fullName) )
 
 parser = argparse.ArgumentParser( description='Convert audio files to mp3' )
 parser.add_argument( "--verbose", help="Print all tags", action = "store_true" )
@@ -217,7 +213,7 @@ Gst.init( None )
 
 if args.find_dupes:
    if args.dir == None:
-      print "%s: Error: argument --dir is required" % sys.argv[0]
+      print( "%s: Error: argument --dir is required" % sys.argv[0] )
       sys.exit( 1 )
    checkForDupes( args.dir, args.dest, args.dupes_dir, args.verbose )
 elif args.file:
