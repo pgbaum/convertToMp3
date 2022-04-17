@@ -60,7 +60,7 @@ def getTags( fileName, verbose ):
    player.set_state( Gst.State.NULL )
 
    if len( tags ) != len( expectedTags ):
-      raise Exception( "Could not find all tags" )
+      return None
 
    return tags
 
@@ -122,9 +122,8 @@ def checkExistence( dirName, fileName, dryRun ):
    return os.path.exists( os.path.join( dirName, fileName ) )
 
 def convertFile( inFile, dest, verbose, quality, dryRun ):
-   try:
-      tags = getTags( inFile, verbose )
-   except Exception:
+   tags = getTags( inFile, verbose )
+   if tags is None:
       print( f"Skipping (no tags): {inFile}" )
       return
 
@@ -159,9 +158,8 @@ def write( line ):
 
 def addFileToDict( inFile, verbose, fileInfos ):
    print( f"# Checking: {inFile}", end = "" )
-   try:
-      tags = getTags( inFile, verbose )
-   except Exception:
+   tags = getTags( inFile, verbose )
+   if tags is None:
       write( "Skipping (no tags)" )
       return
 
